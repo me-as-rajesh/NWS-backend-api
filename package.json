@@ -1,22 +1,24 @@
 {
-  "name": "node-express-api-ts",
-  "description": "Simple api sample in Node",
+  "name": "nws-backend-api",
   "version": "1.0.0",
-  "private": true,
-  "main": "index.js",
+  "description": "Backend API server for NWS (Nearby Worker Service) application",
+  "main": "server.js",
   "scripts": {
-    "dev": "nodemon --watch 'src/**' --ext 'ts,json' --exec 'npm run build && npm run start'",
-    "build": "tsc",
-    "start": "node dist/index.js"
+    "start": "node server.js",
+    "dev": "nodemon server.js"
   },
-  "author": "Google LLC",
-  "license": "Apache-2.0",
   "dependencies": {
-    "express": "^4.21.2"
+    "cloudinary": "^1.32.0",
+    "cors": "^2.8.5",
+    "dotenv": "^16.0.3",
+    "express": "^4.18.2",
+    "express-async-handler": "^1.2.0",
+    "express-validator": "^6.14.2",
+    "helmet": "^6.0.0",
+    "jsonwebtoken": "^8.5.1",
+    "mongoose": "^6.7.2"
   },
   "devDependencies": {
-    "nodemon": "^3.1.0",
-    "typescript": "^5.4.5",
-    "@types/node": "^20.12.12"
+    "nodemon": "^2.0.20"
   }
 }
