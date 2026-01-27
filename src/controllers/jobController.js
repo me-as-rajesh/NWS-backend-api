@@ -167,5 +167,37 @@ const acceptProposal = asyncHandler(async (req, res) => {
     res.json({ message: 'Proposal accepted and job assigned' });
 });
 
+// @desc    Directly assign a job to a worker
+// @route   PUT /api/jobs/:id/assign
+// @access  Private
+const assignJob = asyncHandler(async (req, res) => {
+    const { workerId } = req.body;
+    const job = await Job.findById(req.params.id);
 
-module.exports = { createJob, getJobs, getJobById, updateJob, deleteJob, addProposal, acceptProposal };
+    if (!job) {
+        res.status(404);
+        throw new Error('Job not found');
+    }
+
+    // Check if the logged-in user is the creator of the job
+    if (job.createdBy.toString() !== req.user._id.toString()) {
+        res.status(401);
+        throw new Error('Not authorized to assign this job');
+    }
+
+    const worker = await Worker.findById(workerId);
+    if (!worker) {
+        res.status(404);
+        throw new Error('Worker not found');
+    }
+
+    job.assignedTo = worker._id;
+    job.status = 'assigned';
+
+    await job.save();
+
+    res.json({ message: 'Job assigned successfully' });
+});
+
+
+module.exports = { createJob, getJobs, getJobById, updateJob, deleteJob, addProposal, acceptProposal, assignJob };
