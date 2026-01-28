@@ -1,7 +1,8 @@
 const User = require('../models/User');
 const generateToken = require('../utils/generateToken');
-const cloudinary = require('cloudinary').v2;
+const cloudinary = require('../config/cloudinary');
 const asyncHandler = require('express-async-handler');
+const streamifier = require('streamifier');
 
 // @desc    Register a new user with profile image
 // @route   POST /api/auth/register
@@ -35,17 +36,28 @@ const registerUser = asyncHandler(async (req, res) => {
 
     let profileImageUrl = null;
 
-    // Upload image to Cloudinary if provided
+    // Direct Cloudinary upload from buffer (no temp files)
     if (req.file) {
         try {
-            const result = await cloudinary.uploader.upload(req.file.path, {
-                folder: 'nws-users',
-                resource_type: 'auto',
+            const uploadResult = await new Promise((resolve, reject) => {
+                const uploadStream = cloudinary.uploader.upload_stream(
+                    {
+                        folder: 'nws-users',
+                        resource_type: 'auto',
+                        public_id: `${username}-${Date.now()}`,
+                    },
+                    (error, result) => {
+                        if (error) reject(error);
+                        else resolve(result);
+                    }
+                );
+
+                streamifier.createReadStream(req.file.buffer).pipe(uploadStream);
             });
-            profileImageUrl = result.secure_url;
+            profileImageUrl = uploadResult.secure_url;
         } catch (error) {
             res.status(400);
-            throw new Error('Image upload failed: ' + error.message);
+            throw new Error(`Image upload failed: ${error.message}`);
         }
     }
 
