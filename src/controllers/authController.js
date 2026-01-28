@@ -1,16 +1,61 @@
 const User = require('../models/User');
 const generateToken = require('../utils/generateToken');
+const cloudinary = require('cloudinary').v2;
+const asyncHandler = require('express-async-handler');
 
-// @desc    Register a new user
+// @desc    Register a new user with profile image
 // @route   POST /api/auth/register
 // @access  Public
-const registerUser = async (req, res) => {
-    const { name, username, email, phoneNo, password, role } = req.body;
+const registerUser = asyncHandler(async (req, res) => {
+    const { 
+        name, 
+        username, 
+        email, 
+        phoneNo, 
+        password, 
+        address,
+        latitude,
+        longitude,
+        jobname,
+        role 
+    } = req.body;
 
-    const userExists = await User.findOne({ email });
+    // Validation
+    if (!name || !username || !email || !phoneNo || !password) {
+        res.status(400);
+        throw new Error('Please provide all required fields: name, username, email, phoneNo, password');
+    }
+
+    const userExists = await User.findOne({ $or: [{ email }, { username }] });
 
     if (userExists) {
-        res.status(400).json({ message: 'User already exists' });
+        res.status(400);
+        throw new Error('User already exists with that email or username');
+    }
+
+    let profileImageUrl = null;
+
+    // Upload image to Cloudinary if provided
+    if (req.file) {
+        try {
+            const result = await cloudinary.uploader.upload(req.file.path, {
+                folder: 'nws-users',
+                resource_type: 'auto',
+            });
+            profileImageUrl = result.secure_url;
+        } catch (error) {
+            res.status(400);
+            throw new Error('Image upload failed: ' + error.message);
+        }
+    }
+
+    // Prepare location object if coordinates are provided
+    let locationData = null;
+    if (latitude && longitude) {
+        locationData = {
+            type: 'Point',
+            coordinates: [longitude, latitude] // GeoJSON format: [longitude, latitude]
+        };
     }
 
     const user = await User.create({
@@ -19,23 +64,30 @@ const registerUser = async (req, res) => {
         email,
         phoneNo,
         password,
+        address: address || null,
+        pimage: profileImageUrl,
+        latitude: latitude ? Number(latitude) : null,
+        longitude: longitude ? Number(longitude) : null,
+        location: locationData,
+        jobname: jobname || null,
         role: role || 'user',
     });
 
-    if (user) {
-        res.status(201).json({
-            _id: user._id,
-            name: user.name,
-            username: user.username,
-            email: user.email,
-            phoneNo: user.phoneNo,
-            role: user.role,
-            token: generateToken(user._id),
-        });
-    } else {
-        res.status(400).json({ message: 'Invalid user data' });
-    }
-};
+    res.status(201).json({
+        _id: user._id,
+        name: user.name,
+        username: user.username,
+        email: user.email,
+        phoneNo: user.phoneNo,
+        address: user.address,
+        latitude: user.latitude,
+        longitude: user.longitude,
+        pimage: user.pimage,
+        jobname: user.jobname,
+        role: user.role,
+        token: generateToken(user._id),
+    });
+});
 
 // @desc    Authenticate user & get token
 // @route   POST /api/auth/login

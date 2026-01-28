@@ -1,6 +1,7 @@
 const express = require('express');
 const dotenv = require('dotenv');
 const connectDB = require('./src/config/db');
+const cloudinary = require('./src/config/cloudinary');
 const { notFound, errorHandler } = require('./src/middleware/errorMiddleware');
 
 const authRoutes = require('./src/routes/authRoutes');
