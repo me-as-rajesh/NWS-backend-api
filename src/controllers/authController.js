@@ -38,6 +38,13 @@ const registerUser = asyncHandler(async (req, res) => {
     // Upload image to Cloudinary directly from buffer
     if (req.file) {
         try {
+            console.log('🔍 Starting Cloudinary upload...');
+            console.log('File info:', {
+                originalname: req.file.originalname,
+                mimetype: req.file.mimetype,
+                size: req.file.size,
+            });
+
             // Convert buffer to Base64 data URI for Cloudinary
             const b64 = Buffer.from(req.file.buffer).toString('base64');
             const dataURI = `data:${req.file.mimetype};base64,${b64}`;
@@ -47,11 +54,17 @@ const registerUser = asyncHandler(async (req, res) => {
                 public_id: `${username}-${Date.now()}`,
                 resource_type: 'auto',
             });
+            
             profileImageUrl = result.secure_url;
+            console.log('✅ Image uploaded successfully:', profileImageUrl);
         } catch (error) {
-            console.error('Cloudinary Upload Error:', error);
+            console.error('❌ Cloudinary Upload Error:');
+            console.error('Full error object:', error);
+            console.error('Error message:', error?.message || 'No message');
+            
             res.status(400);
-            throw new Error(`Image upload failed: ${error.message}`);
+            const errorMsg = error?.message || error?.error?.message || 'Unknown error uploading image to Cloudinary';
+            throw new Error(`Image upload failed: ${errorMsg}`);
         }
     }
 
