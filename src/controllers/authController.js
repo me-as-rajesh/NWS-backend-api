@@ -45,25 +45,60 @@ const registerUser = asyncHandler(async (req, res) => {
                 size: req.file.size,
             });
 
+            // Validate file
+            if (!req.file.buffer || req.file.buffer.length === 0) {
+                throw new Error('File buffer is empty');
+            }
+
+            if (!req.file.mimetype) {
+                throw new Error('File mimetype is missing');
+            }
+
             // Convert buffer to Base64 data URI for Cloudinary
             const b64 = Buffer.from(req.file.buffer).toString('base64');
             const dataURI = `data:${req.file.mimetype};base64,${b64}`;
 
-            const result = await cloudinary.uploader.upload(dataURI, {
-                folder: 'nws-users',
-                public_id: `${username}-${Date.now()}`,
-                resource_type: 'auto',
+            console.log('📤 Uploading to Cloudinary...');
+            console.log('Data URI length:', dataURI.length);
+
+            // Use callback-based approach instead of await
+            const uploadPromise = new Promise((resolve, reject) => {
+                cloudinary.uploader.upload(
+                    dataURI,
+                    {
+                        folder: 'nws-users',
+                        public_id: `${username}-${Date.now()}`,
+                        resource_type: 'auto',
+                        timeout: 60000,
+                    },
+                    (error, result) => {
+                        if (error) {
+                            console.error('❌ Cloudinary API Error:', {
+                                message: error.message,
+                                http_code: error.http_code,
+                                status: error.status,
+                            });
+                            reject(error);
+                        } else {
+                            console.log('✅ Image uploaded successfully');
+                            resolve(result);
+                        }
+                    }
+                );
             });
-            
+
+            const result = await uploadPromise;
             profileImageUrl = result.secure_url;
-            console.log('✅ Image uploaded successfully:', profileImageUrl);
+            console.log('✅ Image URL saved:', profileImageUrl);
+
         } catch (error) {
-            console.error('❌ Cloudinary Upload Error:');
-            console.error('Full error object:', error);
-            console.error('Error message:', error?.message || 'No message');
+            console.error('❌ Upload Error Details:');
+            console.error('Error type:', error.constructor.name);
+            console.error('Error message:', error.message);
+            console.error('Full error:', JSON.stringify(error, Object.getOwnPropertyNames(error)));
             
             res.status(400);
-            const errorMsg = error?.message || error?.error?.message || 'Unknown error uploading image to Cloudinary';
+            const errorMsg = error.message || 'Unknown error uploading image to Cloudinary';
             throw new Error(`Image upload failed: ${errorMsg}`);
         }
     }
