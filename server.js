@@ -11,6 +11,7 @@ const jobRoutes = require('./src/routes/jobRoutes');
 const reviewRoutes = require('./src/routes/reviewRoutes');
 const notificationRoutes = require('./src/routes/notificationRoutes');
 const chatRoutes = require('./src/routes/chatRoutes');
+const titleRoutes = require('./src/routes/titleRoutes'); // Import title routes
 
 dotenv.config();
 
@@ -31,6 +32,7 @@ app.use('/api/jobs', jobRoutes);
 app.use('/api/reviews', reviewRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/chats', chatRoutes);
+app.use('/api/titles', titleRoutes); // Use title routes
 
 app.use(notFound);
 app.use(errorHandler);
