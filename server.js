@@ -1,5 +1,7 @@
-const express = require('express');
 const dotenv = require('dotenv');
+dotenv.config();
+
+const express = require('express');
 const connectDB = require('./src/config/db');
 const cloudinary = require('./src/config/cloudinary');
 const { notFound, errorHandler } = require('./src/middleware/errorMiddleware');
@@ -12,8 +14,6 @@ const reviewRoutes = require('./src/routes/reviewRoutes');
 const notificationRoutes = require('./src/routes/notificationRoutes');
 const chatRoutes = require('./src/routes/chatRoutes');
 const titleRoutes = require('./src/routes/titleRoutes'); // Import title routes
-
-dotenv.config();
 
 connectDB();
 
