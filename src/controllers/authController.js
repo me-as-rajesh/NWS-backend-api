@@ -1,5 +1,4 @@
 const User = require('../models/User');
-const generateToken = require('../utils/generateToken');
 const cloudinary = require('../config/cloudinary');
 const asyncHandler = require('express-async-handler');
 
@@ -17,13 +16,26 @@ const registerUser = asyncHandler(async (req, res) => {
         latitude,
         longitude,
         jobname,
-        role 
+        role,
+
+        // Worker-profile fields (only used when role === 'worker')
+        education,
+        about,
+        experience,
+        skills,
+        hourlyRate
     } = req.body;
 
     // Validation
     if (!name || !username || !email || !phoneNo || !password) {
         res.status(400);
         throw new Error('Please provide all required fields: name, username, email, phoneNo, password');
+    }
+
+    const effectiveRole = role || 'user';
+    if (effectiveRole === 'worker') {
+        res.status(400);
+        throw new Error('Worker registration is not allowed on this endpoint. Use POST /api/workers/register');
     }
 
     const userExists = await User.findOne({ $or: [{ email }, { username }] });
@@ -124,7 +136,7 @@ const registerUser = asyncHandler(async (req, res) => {
         longitude: longitude ? Number(longitude) : null,
         location: locationData,
         jobname: jobname || null,
-        role: role || 'user',
+        role: effectiveRole,
     });
 
     res.status(201).json({
@@ -139,7 +151,6 @@ const registerUser = asyncHandler(async (req, res) => {
         pimage: user.pimage,
         jobname: user.jobname,
         role: user.role,
-        token: generateToken(user._id),
     });
 });
 
@@ -147,9 +158,14 @@ const registerUser = asyncHandler(async (req, res) => {
 // @route   POST /api/auth/login
 // @access  Public
 const authUser = async (req, res) => {
-    const { login, password } = req.body;
+    const { login, email, password } = req.body;
+    const credential = login || email;
 
-    const user = await User.findOne({ $or: [{ email: login }, { username: login }] });
+    if (!credential || !password) {
+        return res.status(400).json({ message: 'Please provide login/email and password' });
+    }
+
+    const user = await User.findOne({ $or: [{ email: credential }, { username: credential }] });
 
     if (user && (await user.matchPassword(password))) {
         res.json({
@@ -158,7 +174,6 @@ const authUser = async (req, res) => {
             email: user.email,
             username: user.username,
             role: user.role,
-            token: generateToken(user._id),
         });
     } else {
         res.status(401).json({ message: 'Invalid credentials' });

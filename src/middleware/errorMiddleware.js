@@ -1,4 +1,9 @@
 const notFound = (req, res, next) => {
+    // Ignore favicon requests to avoid noisy 404 errors from browsers
+    if (req.originalUrl === '/favicon.ico') {
+        return res.status(204).end();
+    }
+
     const error = new Error(`Not Found - ${req.originalUrl}`);
     res.status(404);
     next(error);

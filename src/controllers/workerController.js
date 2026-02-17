@@ -1,6 +1,4 @@
 const Worker = require('../models/Worker');
-const User = require('../models/User');
-const generateToken = require('../utils/generateToken');
 const cloudinary = require('../config/cloudinary');
 const asyncHandler = require('express-async-handler');
 
@@ -31,11 +29,11 @@ const registerWorker = asyncHandler(async (req, res) => {
         throw new Error('Please provide all required fields: name, username, email, phoneNo, password, jobname');
     }
 
-    // Check if user already exists
-    const userExists = await User.findOne({ $or: [{ email }, { username }] });
-    if (userExists) {
+    // Check if worker already exists
+    const workerExists = await Worker.findOne({ $or: [{ email }, { username }] });
+    if (workerExists) {
         res.status(400);
-        throw new Error('User already exists with that email or username');
+        throw new Error('Worker already exists with that email or username');
     }
 
     let profileImageUrl = null;
@@ -113,8 +111,7 @@ const registerWorker = asyncHandler(async (req, res) => {
         };
     }
 
-    // Create user first
-    const user = await User.create({
+    const worker = await Worker.create({
         name,
         username,
         email,
@@ -125,13 +122,7 @@ const registerWorker = asyncHandler(async (req, res) => {
         latitude: latitude ? Number(latitude) : null,
         longitude: longitude ? Number(longitude) : null,
         location: locationData,
-        jobname: jobname,
         role: 'worker',
-    });
-
-    // Create worker profile
-    const worker = await Worker.create({
-        userId: user._id,
         jobname: jobname,
         education: education || null,
         about: about || null,
@@ -141,70 +132,16 @@ const registerWorker = asyncHandler(async (req, res) => {
     });
 
     res.status(201).json({
-        _id: user._id,
+        _id: worker._id,
         workerId: worker._id,
-        name: user.name,
-        username: user.username,
-        email: user.email,
-        phoneNo: user.phoneNo,
-        address: user.address,
-        latitude: user.latitude,
-        longitude: user.longitude,
-        pimage: user.pimage,
-        jobname: worker.jobname,
-        education: worker.education,
-        about: worker.about,
-        experience: worker.experience,
-        skills: worker.skills,
-        hourlyRate: worker.hourlyRate,
-        role: user.role,
-        verificationStatus: worker.verificationStatus,
-        token: generateToken(user._id),
-    });
-});
-
-// @desc    Worker login
-// @route   POST /api/workers/login
-// @access  Public
-const workerLogin = asyncHandler(async (req, res) => {
-    const { email, password } = req.body;
-
-    // Validation
-    if (!email || !password) {
-        res.status(400);
-        throw new Error('Please provide email and password');
-    }
-
-    // Find user by email and verify role is worker
-    const user = await User.findOne({ email, role: 'worker' });
-
-    if (!user) {
-        res.status(401);
-        throw new Error('Invalid email or password');
-    }
-
-    // Check password
-    if (!(await user.matchPassword(password))) {
-        res.status(401);
-        throw new Error('Invalid email or password');
-    }
-
-    // Get worker profile
-    const worker = await Worker.findOne({ userId: user._id });
-
-    if (!worker) {
-        res.status(404);
-        throw new Error('Worker profile not found');
-    }
-
-    res.json({
-        _id: user._id,
-        workerId: worker._id,
-        name: user.name,
-        username: user.username,
-        email: user.email,
-        phoneNo: user.phoneNo,
-        pimage: user.pimage,
+        name: worker.name,
+        username: worker.username,
+        email: worker.email,
+        phoneNo: worker.phoneNo,
+        address: worker.address,
+        latitude: worker.latitude,
+        longitude: worker.longitude,
+        pimage: worker.pimage,
         jobname: worker.jobname,
         education: worker.education,
         about: worker.about,
@@ -214,8 +151,55 @@ const workerLogin = asyncHandler(async (req, res) => {
         rating: worker.rating,
         totalJobs: worker.totalJobs,
         verificationStatus: worker.verificationStatus,
-        role: user.role,
-        token: generateToken(user._id),
+        role: worker.role,
+    });
+});
+
+// @desc    Worker login
+// @route   POST /api/workers/login
+// @access  Public
+const workerLogin = asyncHandler(async (req, res) => {
+    const { login, email, password } = req.body;
+    const credential = login || email;
+
+    // Validation
+    if (!credential || !password) {
+        res.status(400);
+        throw new Error('Please provide login/email and password');
+    }
+
+    const worker = await Worker.findOne({
+        $or: [{ email: credential }, { username: credential }],
+    });
+
+    if (!worker) {
+        res.status(401);
+        throw new Error('Invalid email or password');
+    }
+
+    if (!(await worker.matchPassword(password))) {
+        res.status(401);
+        throw new Error('Invalid email or password');
+    }
+
+    res.json({
+        _id: worker._id,
+        workerId: worker._id,
+        name: worker.name,
+        username: worker.username,
+        email: worker.email,
+        phoneNo: worker.phoneNo,
+        pimage: worker.pimage,
+        jobname: worker.jobname,
+        education: worker.education,
+        about: worker.about,
+        experience: worker.experience,
+        skills: worker.skills,
+        hourlyRate: worker.hourlyRate,
+        rating: worker.rating,
+        totalJobs: worker.totalJobs,
+        verificationStatus: worker.verificationStatus,
+        role: worker.role,
     });
 });
 
@@ -223,7 +207,7 @@ const workerLogin = asyncHandler(async (req, res) => {
 // @route   GET /api/workers
 // @access  Public
 const getWorkers = asyncHandler(async (req, res) => {
-    const workers = await Worker.find({}).populate('userId', 'name email pimage');
+    const workers = await Worker.find({});
     res.json(workers);
 });
 
