@@ -7,7 +7,7 @@ const Worker = require('../models/Worker');
 // @route   POST /api/jobs/:id/reviews
 // @access  Private
 const createJobReview = asyncHandler(async (req, res) => {
-    const { rating, comment } = req.body;
+    const { rating, comment, fromUser } = req.body;
     const job = await Job.findById(req.params.id);
 
     if (!job) {
@@ -15,8 +15,13 @@ const createJobReview = asyncHandler(async (req, res) => {
         throw new Error('Job not found');
     }
 
-    // Check if the logged-in user is the creator of the job
-    if (job.createdBy.toString() !== req.user._id.toString()) {
+    if (!fromUser) {
+        res.status(400);
+        throw new Error('fromUser is required');
+    }
+
+    // Preserve original intent: only the job creator can submit the review.
+    if (job.createdBy.toString() !== fromUser.toString()) {
         res.status(401);
         throw new Error('You are not authorized to review this job.');
     }
@@ -42,7 +47,7 @@ const createJobReview = asyncHandler(async (req, res) => {
 
     const review = new Review({
         jobId: req.params.id,
-        fromUser: req.user._id,
+        fromUser: fromUser,
         toWorker: job.assignedTo,
         rating: Number(rating),
         comment,

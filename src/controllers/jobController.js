@@ -6,7 +6,13 @@ const Worker = require('../models/Worker');
 // @route   POST /api/jobs
 // @access  Private
 const createJob = asyncHandler(async (req, res) => {
-    const { title, description, category, location, address, budget, duration, images } = req.body;
+    const { title, description, category, location, address, budget, duration, images, createdBy, userId } = req.body;
+
+    const effectiveCreatedBy = createdBy || userId;
+    if (!effectiveCreatedBy) {
+        res.status(400);
+        throw new Error('createdBy (or userId) is required');
+    }
 
     const job = new Job({
         title,
@@ -17,7 +23,7 @@ const createJob = asyncHandler(async (req, res) => {
         budget,
         duration,
         images,
-        createdBy: req.user._id,
+        createdBy: effectiveCreatedBy,
     });
 
     const createdJob = await job.save();
@@ -58,12 +64,6 @@ const updateJob = asyncHandler(async (req, res) => {
         throw new Error('Job not found');
     }
 
-    // Check if the logged-in user is the creator of the job
-    if (job.createdBy.toString() !== req.user._id.toString()) {
-        res.status(401);
-        throw new Error('User not authorized to update this job');
-    }
-
     job.title = title || job.title;
     job.description = description || job.description;
     job.category = category || job.category;
@@ -89,12 +89,6 @@ const deleteJob = asyncHandler(async (req, res) => {
         throw new Error('Job not found');
     }
 
-    // Check if the logged-in user is the creator of the job
-    if (job.createdBy.toString() !== req.user._id.toString()) {
-        res.status(401);
-        throw new Error('User not authorized to delete this job');
-    }
-
     await job.remove();
     res.json({ message: 'Job removed' });
 });
@@ -103,7 +97,7 @@ const deleteJob = asyncHandler(async (req, res) => {
 // @route   POST /api/jobs/:id/proposals
 // @access  Private/Worker
 const addProposal = asyncHandler(async (req, res) => {
-    const { bidAmount, message } = req.body;
+    const { bidAmount, message, userId } = req.body;
     const job = await Job.findById(req.params.id);
 
     if (!job) {
@@ -111,7 +105,12 @@ const addProposal = asyncHandler(async (req, res) => {
         throw new Error('Job not found');
     }
 
-    const worker = await Worker.findOne({ userId: req.user._id });
+    if (!userId) {
+        res.status(400);
+        throw new Error('userId is required to submit a proposal');
+    }
+
+    const worker = await Worker.findOne({ userId: userId });
     if (!worker) {
         res.status(400);
         throw new Error('Only workers can submit proposals.');
@@ -146,12 +145,6 @@ const acceptProposal = asyncHandler(async (req, res) => {
         throw new Error('Job not found');
     }
 
-    // Check if the logged-in user is the creator of the job
-    if (job.createdBy.toString() !== req.user._id.toString()) {
-        res.status(401);
-        throw new Error('Not authorized to accept proposals for this job');
-    }
-
     const proposal = job.proposals.id(req.params.proposalId);
 
     if (!proposal) {
@@ -177,12 +170,6 @@ const assignJob = asyncHandler(async (req, res) => {
     if (!job) {
         res.status(404);
         throw new Error('Job not found');
-    }
-
-    // Check if the logged-in user is the creator of the job
-    if (job.createdBy.toString() !== req.user._id.toString()) {
-        res.status(401);
-        throw new Error('Not authorized to assign this job');
     }
 
     const worker = await Worker.findById(workerId);

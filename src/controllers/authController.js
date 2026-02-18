@@ -154,7 +154,7 @@ const registerUser = asyncHandler(async (req, res) => {
     });
 });
 
-// @desc    Authenticate user & get token
+// @desc    Authenticate user
 // @route   POST /api/auth/login
 // @access  Public
 const authUser = async (req, res) => {

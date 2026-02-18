@@ -4,14 +4,24 @@ const Message = require('../models/Message');
 const User = require('../models/User');
 const Notification = require('../models/Notification');
 
+const getRequestUserId = (req, { bodyKey = 'userId', queryKey = 'userId' } = {}) => {
+    return (
+        req?.body?.[bodyKey] ||
+        req?.query?.[queryKey] ||
+        req?.body?.userId ||
+        req?.query?.userId
+    );
+};
+
 // @desc    Create or get a one-on-one chat
 // @route   POST /api/chats
 // @access  Private
 const accessChat = asyncHandler(async (req, res) => {
     const { userId, jobId } = req.body;
+    const requesterId = getRequestUserId(req, { bodyKey: 'requesterId', queryKey: 'requesterId' });
 
-    if (!userId) {
-        console.log("UserId param not sent with request");
+    if (!requesterId || !userId) {
+        console.log("requesterId and userId are required");
         return res.sendStatus(400);
     }
 
@@ -19,7 +29,7 @@ const accessChat = asyncHandler(async (req, res) => {
     var isChat = await Chat.find({
         isGroupChat: false,
         $and: [
-            { participants: { $elemMatch: { $eq: req.user._id } } },
+            { participants: { $elemMatch: { $eq: requesterId } } },
             { participants: { $elemMatch: { $eq: userId } } },
         ],
         ...(jobId && { jobId: jobId })
@@ -38,7 +48,7 @@ const accessChat = asyncHandler(async (req, res) => {
         var chatData = {
             chatName: "sender",
             isGroupChat: false,
-            participants: [req.user._id, userId],
+            participants: [requesterId, userId],
             ...(jobId && { jobId: jobId })
         };
 
@@ -60,8 +70,13 @@ const accessChat = asyncHandler(async (req, res) => {
 // @route   GET /api/chats
 // @access  Private
 const fetchChats = asyncHandler(async (req, res) => {
+    const requesterId = getRequestUserId(req, { bodyKey: 'userId', queryKey: 'userId' });
+    if (!requesterId) {
+        return res.status(400).json({ message: 'userId query param is required' });
+    }
+
     try {
-        Chat.find({ participants: { $elemMatch: { $eq: req.user._id } } })
+        Chat.find({ participants: { $elemMatch: { $eq: requesterId } } })
             .populate("participants", "-password")
             .populate("groupAdmin", "-password")
             .populate("lastMessage")
@@ -99,14 +114,16 @@ const allMessages = asyncHandler(async (req, res) => {
 // @access  Private
 const sendMessage = asyncHandler(async (req, res) => {
     const { content, chatId } = req.body;
+    const senderId = getRequestUserId(req, { bodyKey: 'senderId', queryKey: 'senderId' });
+    const senderName = req?.body?.senderName;
 
-    if (!content || !chatId) {
+    if (!content || !chatId || !senderId) {
         console.log("Invalid data passed into request");
         return res.sendStatus(400);
     }
 
     var newMessage = {
-        sender: req.user._id,
+        sender: senderId,
         content: content,
         chatId: chatId,
     };
@@ -128,12 +145,12 @@ const sendMessage = asyncHandler(async (req, res) => {
         
         // Create a notification for the recipient
         const chat = await Chat.findById(req.body.chatId);
-        const recipient = chat.participants.find(p => p.toString() !== req.user._id.toString());
+        const recipient = chat.participants.find(p => p.toString() !== senderId.toString());
 
         if (recipient) {
             await Notification.create({
                 userId: recipient,
-                title: `New message from ${req.user.name}`,
+                title: `New message${senderName ? ` from ${senderName}` : ''}`,
                 message: content,
                 type: 'message',
                 metadata: { chatId: req.body.chatId }
