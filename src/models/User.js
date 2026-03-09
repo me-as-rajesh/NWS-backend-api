@@ -2,39 +2,18 @@ const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
 
 const userSchema = new mongoose.Schema({
-    // Basic Information
-    name: { type: String, required: true },
+    // Basic Authentication Information (required at registration)
     username: { type: String, required: true, unique: true },
     email: { type: String, required: true, unique: true },
-    phoneNo: { type: String, required: true },
     password: { type: String, required: true },
-    
-    // Profile Information
-    pimage: { type: String }, // Cloudinary URL
-    address: { type: String },
-    latitude: { type: Number }, // User's latitude for geolocation
-    longitude: { type: Number }, // User's longitude for geolocation
-    
-    // Location (GeoJSON format for geospatial queries)
-    location: {
-        type: {
-            type: String,
-            enum: ['Point'],
-            default: 'Point'
-        },
-        coordinates: {
-            type: [Number], // [longitude, latitude]
-        }
-    },
-    
-    // Job Information
-    jobname: { type: String }, // Job title/profession
-    
-    // Role and Status
     role: { type: String, enum: ['user', 'worker', 'admin'], default: 'user' },
+    
+    // Profile Information (optional, added after login)
+    name: { type: String },
+    phoneNo: { type: String },
+    address: { type: String },
+    pimage: { type: String }, // Cloudinary URL
 }, { timestamps: true });
-
-userSchema.index({ location: '2dsphere' });
 
 // Hash password before saving
 userSchema.pre('save', async function(next) {

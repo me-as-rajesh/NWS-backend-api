@@ -35,7 +35,6 @@ const updateUser = asyncHandler(async (req, res) => {
         user.phoneNo = req.body.phoneNo || user.phoneNo;
         user.address = req.body.address || user.address;
         user.pimage = req.body.pimage || user.pimage;
-        user.location = req.body.location || user.location;
         user.role = req.body.role || user.role;
 
         const updatedUser = await user.save();
