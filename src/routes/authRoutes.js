@@ -6,6 +6,13 @@ const upload = require('../middleware/uploadMiddleware');
 
 router.route('/register').post(registerUser);
 router.route('/login').post(authUser);
-router.route('/profile').get(protect, getUserProfile).put(protect, upload.single('profileImage'), updateUserProfile);
+router.route('/profile').get(protect, getUserProfile).put(
+	protect,
+	upload.fields([
+		{ name: 'profileImage', maxCount: 1 },
+		{ name: 'pimage', maxCount: 1 },
+	]),
+	updateUserProfile
+);
 
 module.exports = router;

@@ -3,6 +3,24 @@ const cloudinary = require('../config/cloudinary');
 const asyncHandler = require('express-async-handler');
 const jwt = require('jsonwebtoken');
 
+const getUploadedFile = (req) => {
+    if (req.file) {
+        return req.file;
+    }
+
+    if (req.files) {
+        if (req.files.profileImage && req.files.profileImage[0]) {
+            return req.files.profileImage[0];
+        }
+
+        if (req.files.pimage && req.files.pimage[0]) {
+            return req.files.pimage[0];
+        }
+    }
+
+    return null;
+};
+
 // @desc    Register a new user
 // @route   POST /api/auth/register
 // @access  Public
@@ -63,7 +81,7 @@ const authUser = async (req, res) => {
     const user = await User.findOne({ $or: [{ email: credential }, { username: credential }] });
 
     if (user && (await user.matchPassword(password))) {
-        const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
+        const token = jwt.sign({ id: user._id, accountType: 'user' }, process.env.JWT_SECRET, {
             expiresIn: '30d',
         });
 
@@ -72,6 +90,7 @@ const authUser = async (req, res) => {
             username: user.username,
             email: user.email,
             role: user.role,
+            accountType: 'user',
             token,
         });
     } else {
@@ -112,26 +131,27 @@ const updateUserProfile = asyncHandler(async (req, res) => {
 
     if (user) {
         const { name, phoneNo, address } = req.body;
+        const file = getUploadedFile(req);
 
         let profileImageUrl = user.pimage;
 
         // Upload new image to Cloudinary if provided
-        if (req.file) {
+        if (file) {
             try {
                 console.log('🔍 Starting Cloudinary upload for profile update...');
 
                 // Validate file
-                if (!req.file.buffer || req.file.buffer.length === 0) {
+                if (!file.buffer || file.buffer.length === 0) {
                     throw new Error('File buffer is empty');
                 }
 
-                if (!req.file.mimetype) {
+                if (!file.mimetype) {
                     throw new Error('File mimetype is missing');
                 }
 
                 // Convert buffer to Base64 data URI for Cloudinary
-                const b64 = Buffer.from(req.file.buffer).toString('base64');
-                const dataURI = `data:${req.file.mimetype};base64,${b64}`;
+                const b64 = Buffer.from(file.buffer).toString('base64');
+                const dataURI = `data:${file.mimetype};base64,${b64}`;
 
                 // Use callback-based approach
                 const uploadPromise = new Promise((resolve, reject) => {

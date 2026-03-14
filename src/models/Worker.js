@@ -5,14 +5,15 @@ const workerSchema = new mongoose.Schema({
     // Back-compat only (older records linked to users collection)
     userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: false },
 
-    // Account fields (worker-only storage)
-    name: { type: String, required: true },
+    // Authentication fields
     username: { type: String, required: true, unique: true },
     email: { type: String, required: true, unique: true },
-    phoneNo: { type: String, required: true },
     password: { type: String, required: true },
+    role: { type: String, enum: ['worker'], default: 'worker' },
 
     // Profile fields
+    name: { type: String },
+    phoneNo: { type: String },
     pimage: { type: String },
     address: { type: String },
     latitude: { type: Number },
@@ -28,9 +29,7 @@ const workerSchema = new mongoose.Schema({
         }
     },
 
-    role: { type: String, enum: ['worker'], default: 'worker' },
-
-    jobname: { type: String, required: true },
+    jobname: { type: String },
     education: { type: String },
     about: { type: String },
     experience: { type: String },

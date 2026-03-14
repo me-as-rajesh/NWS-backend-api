@@ -1,15 +1,27 @@
 const express = require('express');
 const router = express.Router();
-const { registerWorker, workerLogin, getWorkers, updateWorkerProfile } = require('../controllers/workerController');
+const { registerWorker, workerLogin, getWorkerProfile, updateWorkerProfile, getWorkers } = require('../controllers/workerController');
+const { protect, worker } = require('../middleware/authMiddleware');
 const upload = require('../middleware/uploadMiddleware');
-const { protect } = require('../middleware/authMiddleware');
 
 // Public routes
-router.route('/register').post(upload.single('profileImage'), registerWorker);
+router.route('/register').post(
+	upload.fields([
+		{ name: 'profileImage', maxCount: 1 },
+		{ name: 'pimage', maxCount: 1 },
+	]),
+	registerWorker
+);
 router.route('/login').post(workerLogin);
 router.route('/').get(getWorkers);
-
-// Private routes
-router.route('/:id').put(protect, upload.single('profileImage'), updateWorkerProfile);
+router.route('/profile').get(protect, worker, getWorkerProfile).put(
+	protect,
+	worker,
+	upload.fields([
+		{ name: 'profileImage', maxCount: 1 },
+		{ name: 'pimage', maxCount: 1 },
+	]),
+	updateWorkerProfile
+);
 
 module.exports = router;

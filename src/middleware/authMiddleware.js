@@ -1,4 +1,5 @@
 const User = require('../models/User');
+const WorkerModel = require('../models/Worker');
 const jwt = require('jsonwebtoken');
 const asyncHandler = require('express-async-handler');
 
@@ -16,8 +17,21 @@ const protect = asyncHandler(async (req, res, next) => {
             // Verify token
             const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
-            // Get user from the token
-            req.user = await User.findById(decoded.id).select('-password');
+            let account = null;
+
+            if (decoded.accountType === 'worker') {
+                account = await WorkerModel.findById(decoded.id).select('-password');
+            } else {
+                account = await User.findById(decoded.id).select('-password');
+            }
+
+            if (!account) {
+                res.status(401);
+                throw new Error('Not authorized, account not found');
+            }
+
+            req.user = account;
+            req.accountType = decoded.accountType || 'user';
 
             next();
         } catch (error) {
