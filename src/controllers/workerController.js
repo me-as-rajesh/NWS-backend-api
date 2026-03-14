@@ -292,3 +292,17 @@ const getWorkers = asyncHandler(async (req, res) => {
 });
 
 module.exports = { registerWorker, workerLogin, getWorkerProfile, updateWorkerProfile, getWorkers };
+
+// @desc    Get worker by ID
+// @route   GET /api/workers/:id
+// @access  Public
+const getWorkerById = asyncHandler(async (req, res) => {
+    const worker = await Worker.findById(req.params.id).select('-password');
+    if (worker) {
+        return res.json(worker);
+    }
+    res.status(404);
+    throw new Error('Worker not found');
+});
+
+module.exports.getWorkerById = getWorkerById;

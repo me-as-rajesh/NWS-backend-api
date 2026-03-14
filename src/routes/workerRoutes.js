@@ -14,6 +14,8 @@ router.route('/register').post(
 );
 router.route('/login').post(workerLogin);
 router.route('/').get(getWorkers);
+// Public worker lookup by id
+router.route('/:id').get(require('../controllers/workerController').getWorkerById);
 router.route('/profile').get(protect, worker, getWorkerProfile).put(
 	protect,
 	worker,
