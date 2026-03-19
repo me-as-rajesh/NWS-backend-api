@@ -2,13 +2,15 @@ const asyncHandler = require('express-async-handler');
 const Review = require('../models/Review');
 const Job = require('../models/Job');
 const Worker = require('../models/Worker');
+const Notification = require('../models/Notification');
 
 // @desc    Create a new review for a job
 // @route   POST /api/jobs/:id/reviews
 // @access  Private
 const createJobReview = asyncHandler(async (req, res) => {
     const { rating, comment, fromUser } = req.body;
-    const job = await Job.findById(req.params.id);
+    const jobId = req.params.jobId || req.params.id;
+    const job = await Job.findById(jobId);
 
     if (!job) {
         res.status(404);
@@ -39,14 +41,14 @@ const createJobReview = asyncHandler(async (req, res) => {
     }
 
     // Check if the job has already been reviewed
-    const alreadyReviewed = await Review.findOne({ jobId: req.params.id });
+    const alreadyReviewed = await Review.findOne({ jobId });
     if (alreadyReviewed) {
         res.status(400);
         throw new Error('This job has already been reviewed.');
     }
 
     const review = new Review({
-        jobId: req.params.id,
+        jobId,
         fromUser: fromUser,
         toWorker: job.assignedTo,
         rating: Number(rating),
@@ -65,7 +67,15 @@ const createJobReview = asyncHandler(async (req, res) => {
         await worker.save();
     }
 
-    res.status(201).json({ message: 'Review added successfully' });
+    await Notification.create({
+        userId: worker?.userId || job.assignedTo,
+        title: 'New review received',
+        message: 'A user reviewed your completed job.',
+        type: 'review',
+        metadata: { jobId, rating: Number(rating) },
+    });
+
+    res.status(201).json({ message: 'Review added successfully', review });
 });
 
 // @desc    Get reviews for a worker

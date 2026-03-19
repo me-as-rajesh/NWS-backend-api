@@ -3,6 +3,7 @@ const Chat = require('../models/Chat');
 const Message = require('../models/Message');
 const User = require('../models/User');
 const Notification = require('../models/Notification');
+const Job = require('../models/Job');
 
 const getRequestUserId = (req, { bodyKey = 'userId', queryKey = 'userId' } = {}) => {
     return (
@@ -11,6 +12,32 @@ const getRequestUserId = (req, { bodyKey = 'userId', queryKey = 'userId' } = {})
         req?.body?.userId ||
         req?.query?.userId
     );
+};
+
+const getChatById = async (chatId) => {
+    const chat = await Chat.findById(chatId);
+    if (!chat) {
+        throw new Error('Chat not found');
+    }
+
+    return chat;
+};
+
+const ensureChatEnabledForJob = async (jobId) => {
+    if (!jobId) {
+        return null;
+    }
+
+    const job = await Job.findById(jobId);
+    if (!job) {
+        throw new Error('Job not found');
+    }
+
+    if (!job.chatEnabled) {
+        throw new Error('Chat disabled');
+    }
+
+    return job;
 };
 
 // @desc    Create or get a one-on-one chat
@@ -25,13 +52,19 @@ const accessChat = asyncHandler(async (req, res) => {
         return res.sendStatus(400);
     }
 
+    if (jobId) {
+        try {
+            await ensureChatEnabledForJob(jobId);
+        } catch (error) {
+            res.status(error.message === 'Chat disabled' ? 403 : 404);
+            throw error;
+        }
+    }
+
     // Find if a chat between the two users (and optionally for a job) already exists
-    var isChat = await Chat.find({
+    let isChat = await Chat.find({
         isGroupChat: false,
-        $and: [
-            { participants: { $elemMatch: { $eq: requesterId } } },
-            { participants: { $elemMatch: { $eq: userId } } },
-        ],
+        participants: { $all: [requesterId, userId] },
         ...(jobId && { jobId: jobId })
     })
     .populate("participants", "-password")
@@ -76,7 +109,7 @@ const fetchChats = asyncHandler(async (req, res) => {
     }
 
     try {
-        Chat.find({ participants: { $elemMatch: { $eq: requesterId } } })
+        Chat.find({ participants: requesterId })
             .populate("participants", "-password")
             .populate("groupAdmin", "-password")
             .populate("lastMessage")
@@ -89,7 +122,9 @@ const fetchChats = asyncHandler(async (req, res) => {
                 res.status(200).send(results);
             });
     } catch (error) {
-        res.status(400);
+        if (res.statusCode === 200) {
+            res.status(400);
+        }
         throw new Error(error.message);
     }
 });
@@ -129,6 +164,18 @@ const sendMessage = asyncHandler(async (req, res) => {
     };
 
     try {
+        let chat;
+
+        try {
+            chat = await getChatById(chatId);
+            if (chat.jobId) {
+                await ensureChatEnabledForJob(chat.jobId);
+            }
+        } catch (error) {
+            res.status(error.message === 'Chat disabled' ? 403 : 404);
+            throw error;
+        }
+
         var message = await Message.create(newMessage);
 
         message = await message.populate("sender", "name pimage");
@@ -144,7 +191,6 @@ const sendMessage = asyncHandler(async (req, res) => {
         });
         
         // Create a notification for the recipient
-        const chat = await Chat.findById(req.body.chatId);
         const recipient = chat.participants.find(p => p.toString() !== senderId.toString());
 
         if (recipient) {
