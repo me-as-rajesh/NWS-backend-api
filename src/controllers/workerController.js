@@ -306,3 +306,57 @@ const getWorkerById = asyncHandler(async (req, res) => {
 });
 
 module.exports.getWorkerById = getWorkerById;
+
+// @desc    Update worker by ID (admin)
+// @route   PUT /api/workers/:id
+// @access  Private/Admin (route currently unprotected to match existing userRoutes pattern)
+const updateWorker = asyncHandler(async (req, res) => {
+    const worker = await Worker.findById(req.params.id);
+
+    if (!worker) {
+        res.status(404);
+        throw new Error('Worker not found');
+    }
+
+    // Accept pimage as direct URL in JSON body when client sends application/json
+    // If frontend needs multipart upload, use /api/workers/profile (authenticated)
+    worker.name = req.body.name || worker.name;
+    worker.username = req.body.username || worker.username;
+    worker.email = req.body.email || worker.email;
+    worker.phoneNo = req.body.phoneNo || worker.phoneNo;
+    worker.address = req.body.address || worker.address;
+    worker.pimage = req.body.pimage || worker.pimage;
+    worker.jobname = req.body.jobname || worker.jobname;
+    worker.education = req.body.education || worker.education;
+    worker.about = req.body.about || worker.about;
+    worker.experience = req.body.experience || worker.experience;
+    worker.skills = req.body.skills ? (Array.isArray(req.body.skills) ? req.body.skills : typeof req.body.skills === 'string' ? req.body.skills.split(',').map((s) => s.trim()).filter(Boolean) : worker.skills) : worker.skills;
+    worker.hourlyRate = req.body.hourlyRate !== undefined ? Number(req.body.hourlyRate) : worker.hourlyRate;
+    worker.availability = req.body.availability !== undefined ? (req.body.availability === true || req.body.availability === 'true') : worker.availability;
+    worker.latitude = req.body.latitude !== undefined ? Number(req.body.latitude) : worker.latitude;
+    worker.longitude = req.body.longitude !== undefined ? Number(req.body.longitude) : worker.longitude;
+
+    const updatedWorker = await worker.save();
+
+    res.json({
+        _id: updatedWorker._id,
+        workerId: updatedWorker._id,
+        username: updatedWorker.username,
+        email: updatedWorker.email,
+        name: updatedWorker.name,
+        phoneNo: updatedWorker.phoneNo,
+        address: updatedWorker.address,
+        pimage: updatedWorker.pimage,
+        jobname: updatedWorker.jobname,
+        education: updatedWorker.education,
+        about: updatedWorker.about,
+        experience: updatedWorker.experience,
+        skills: updatedWorker.skills,
+        hourlyRate: updatedWorker.hourlyRate,
+        availability: updatedWorker.availability,
+        role: updatedWorker.role,
+        updatedAt: updatedWorker.updatedAt,
+    });
+});
+
+module.exports.updateWorker = updateWorker;

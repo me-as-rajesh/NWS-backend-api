@@ -7,6 +7,7 @@ const {
 	updateWorkerProfile,
 	getWorkers,
 	getWorkerById,
+	updateWorker,
 } = require('../controllers/workerController');
 const { protect, worker } = require('../middleware/authMiddleware');
 const upload = require('../middleware/uploadMiddleware');
@@ -37,6 +38,6 @@ router
 	);
 
 // Public worker lookup by id (keep at the end)
-router.route('/:id').get(getWorkerById);
+router.route('/:id').get(getWorkerById).put(updateWorker);
 
 module.exports = router;
