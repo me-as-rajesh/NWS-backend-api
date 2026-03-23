@@ -336,6 +336,19 @@ const updateWorker = asyncHandler(async (req, res) => {
     worker.latitude = req.body.latitude !== undefined ? Number(req.body.latitude) : worker.latitude;
     worker.longitude = req.body.longitude !== undefined ? Number(req.body.longitude) : worker.longitude;
 
+    // Build valid GeoJSON `location` only when both latitude and longitude are provided
+    if (req.body.latitude !== undefined && req.body.longitude !== undefined) {
+        worker.location = {
+            type: 'Point',
+            coordinates: [Number(req.body.longitude), Number(req.body.latitude)],
+        };
+    } else {
+        // sanitize malformed location objects (avoid { type: 'Point' } without coordinates)
+        if (worker.location && (!Array.isArray(worker.location.coordinates) || worker.location.coordinates.length !== 2)) {
+            worker.location = undefined;
+        }
+    }
+
     const updatedWorker = await worker.save();
 
     res.json({
