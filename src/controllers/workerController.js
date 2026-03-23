@@ -2,7 +2,6 @@ const Worker = require('../models/Worker');
 const cloudinary = require('../config/cloudinary');
 const asyncHandler = require('express-async-handler');
 const jwt = require('jsonwebtoken');
-const mongoose = require('mongoose');
 
 const getUploadedFile = (req) => {
     if (req.file) {
@@ -256,11 +255,6 @@ const updateWorkerProfile = asyncHandler(async (req, res) => {
     worker.hourlyRate = hourlyRate !== undefined ? Number(hourlyRate) : worker.hourlyRate;
     worker.availability = availability !== undefined ? availability === true || availability === 'true' : worker.availability;
 
-    // Sanitize invalid userId strings that cannot be cast to ObjectId
-    if (worker.userId && typeof worker.userId === 'string' && !mongoose.Types.ObjectId.isValid(worker.userId)) {
-        worker.userId = undefined;
-    }
-
     const updatedWorker = await worker.save();
 
     res.json({
@@ -341,11 +335,6 @@ const updateWorker = asyncHandler(async (req, res) => {
     worker.availability = req.body.availability !== undefined ? (req.body.availability === true || req.body.availability === 'true') : worker.availability;
     worker.latitude = req.body.latitude !== undefined ? Number(req.body.latitude) : worker.latitude;
     worker.longitude = req.body.longitude !== undefined ? Number(req.body.longitude) : worker.longitude;
-
-    // Sanitize invalid userId strings that cannot be cast to ObjectId
-    if (worker.userId && typeof worker.userId === 'string' && !mongoose.Types.ObjectId.isValid(worker.userId)) {
-        worker.userId = undefined;
-    }
 
     const updatedWorker = await worker.save();
 

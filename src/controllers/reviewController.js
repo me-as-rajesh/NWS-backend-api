@@ -68,7 +68,7 @@ const createJobReview = asyncHandler(async (req, res) => {
     }
 
     await Notification.create({
-        userId: worker?.userId || job.assignedTo,
+        userId: job.assignedTo,
         title: 'New review received',
         message: 'A user reviewed your completed job.',
         type: 'review',

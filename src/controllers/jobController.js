@@ -38,7 +38,7 @@ const parseLocationPayload = (location, address) => {
     };
 };
 
-const getWorkerChatUserId = (worker) => worker?.userId || worker?._id;
+const getWorkerChatUserId = (worker) => worker?._id;
 
 const ensureWorkerExists = async (workerId) => {
     const worker = await Worker.findById(workerId);
@@ -205,7 +205,7 @@ const getJobById = asyncHandler(async (req, res) => {
     const job = await Job.findById(req.params.id)
         .populate('createdBy', 'name pimage')
         .populate('assignedTo', 'name jobname rating pimage')
-        .populate('proposals.workerId', 'userId jobname name rating');
+        .populate('proposals.workerId', 'jobname name rating');
 
     if (!job) {
         res.status(404);
@@ -283,7 +283,7 @@ const deleteJob = asyncHandler(async (req, res) => {
 // @route   POST /api/jobs/:id/proposals
 // @access  Private/Worker
 const addProposal = asyncHandler(async (req, res) => {
-    const { bidAmount, message, userId } = req.body;
+    const { bidAmount, message, workerId } = req.body;
     const job = await Job.findById(req.params.id);
 
     if (!job) {
@@ -291,12 +291,18 @@ const addProposal = asyncHandler(async (req, res) => {
         throw new Error('Job not found');
     }
 
-    if (!userId) {
-        res.status(400);
-        throw new Error('userId is required to submit a proposal');
+    // If the request is authenticated as a worker, use that worker ID.
+    let worker = null;
+    if (req.user && req.accountType === 'worker') {
+        worker = await Worker.findById(req.user._id);
+    } else if (workerId) {
+        worker = await Worker.findById(workerId);
     }
 
-    const worker = await Worker.findOne({ userId });
+    if (!worker) {
+        res.status(400);
+        throw new Error('Only workers can submit proposals. Provide workerId or authenticate as a worker');
+    }
     if (!worker) {
         res.status(400);
         throw new Error('Only workers can submit proposals.');

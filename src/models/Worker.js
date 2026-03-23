@@ -2,9 +2,6 @@ const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
 
 const workerSchema = new mongoose.Schema({
-    // Back-compat only (older records linked to users collection)
-    userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: false },
-
     // Authentication fields
     username: { type: String, required: true, unique: true },
     email: { type: String, required: true, unique: true },
