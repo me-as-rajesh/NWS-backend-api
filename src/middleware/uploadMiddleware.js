@@ -5,21 +5,21 @@ const path = require('path');
 const storage = multer.memoryStorage();
 
 const fileFilter = (req, file, cb) => {
-    // Accept image files only
-    const allowedTypes = /jpeg|jpg|png|gif/;
-    const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
-    const mimetype = allowedTypes.test(file.mimetype);
+    // Accept any file with an image/* mimetype OR common image extensions
+    const mimetypeIsImage = file && file.mimetype && file.mimetype.startsWith('image/');
+    const allowedExts = /jpeg|jpg|png|gif|webp|bmp|tiff|svg|heic/;
+    const extname = file && file.originalname ? allowedExts.test(path.extname(file.originalname).toLowerCase()) : false;
 
-    if (mimetype && extname) {
+    if (mimetypeIsImage || extname) {
         return cb(null, true);
     } else {
-        cb(new Error('Only image files are allowed (jpeg, jpg, png, gif)'));
+        cb(new Error('Only image files are allowed (jpeg, jpg, png, gif, webp, bmp, tiff, svg, heic)'));
     }
 };
 
 const upload = multer({
-    storage: storage,
-    fileFilter: fileFilter,
+    storage,
+    fileFilter,
     limits: { fileSize: 5 * 1024 * 1024 } // 5MB limit
 });
 
