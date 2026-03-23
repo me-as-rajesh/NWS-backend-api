@@ -1,6 +1,13 @@
 const express = require('express');
 const router = express.Router();
-const { registerWorker, workerLogin, getWorkerProfile, updateWorkerProfile, getWorkers } = require('../controllers/workerController');
+const {
+	registerWorker,
+	workerLogin,
+	getWorkerProfile,
+	updateWorkerProfile,
+	getWorkers,
+	getWorkerById,
+} = require('../controllers/workerController');
 const { protect, worker } = require('../middleware/authMiddleware');
 const upload = require('../middleware/uploadMiddleware');
 
@@ -14,16 +21,22 @@ router.route('/register').post(
 );
 router.route('/login').post(workerLogin);
 router.route('/').get(getWorkers);
-// Public worker lookup by id
-router.route('/:id').get(require('../controllers/workerController').getWorkerById);
-router.route('/profile').get(protect, worker, getWorkerProfile).put(
-	protect,
-	worker,
-	upload.fields([
-		{ name: 'profileImage', maxCount: 1 },
-		{ name: 'pimage', maxCount: 1 },
-	]),
-	updateWorkerProfile
-);
+
+// Profile routes (define before '/:id' to avoid route shadowing)
+router
+	.route('/profile')
+	.get(protect, worker, getWorkerProfile)
+	.put(
+		protect,
+		worker,
+		upload.fields([
+			{ name: 'profileImage', maxCount: 1 },
+			{ name: 'pimage', maxCount: 1 },
+		]),
+		updateWorkerProfile
+	);
+
+// Public worker lookup by id (keep at the end)
+router.route('/:id').get(getWorkerById);
 
 module.exports = router;
