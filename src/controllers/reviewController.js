@@ -40,11 +40,11 @@ const createJobReview = asyncHandler(async (req, res) => {
         throw new Error('You can only review completed jobs.');
     }
 
-    // Check if the job has already been reviewed
-    const alreadyReviewed = await Review.findOne({ jobId });
+    // Check if this user has already reviewed the job
+    const alreadyReviewed = await Review.findOne({ jobId, fromUser });
     if (alreadyReviewed) {
         res.status(400);
-        throw new Error('This job has already been reviewed.');
+        throw new Error('You have already reviewed this job.');
     }
 
     const review = new Review({
