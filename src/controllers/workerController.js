@@ -318,14 +318,32 @@ const updateWorker = asyncHandler(async (req, res) => {
         throw new Error('Worker not found');
     }
 
+    // Debugging info to help trace pimage update issues
+    console.log('UPDATE WORKER REQ.BODY:', req.body);
+    console.log('UPDATE WORKER REQ.FILE(S):', req.file || req.files);
+
     // Accept pimage as direct URL in JSON body when client sends application/json
-    // If frontend needs multipart upload, use /api/workers/profile (authenticated)
+    // Also accept multipart file upload (profileImage or pimage) via upload middleware
+    const file = getUploadedFile(req);
+    let profileImageUrl = worker.pimage;
+
+    if (file) {
+        try {
+            profileImageUrl = await uploadWorkerImage(file, req.body.username || worker.username);
+        } catch (error) {
+            console.error('Admin profile image upload failed:', error.message);
+            res.status(400);
+            throw new Error(`Profile image upload failed: ${error.message}`);
+        }
+    }
+
     worker.name = req.body.name || worker.name;
     worker.username = req.body.username || worker.username;
     worker.email = req.body.email || worker.email;
     worker.phoneNo = req.body.phoneNo || worker.phoneNo;
     worker.address = req.body.address || worker.address;
-    worker.pimage = req.body.pimage || worker.pimage;
+    // Prefer uploaded file URL, then JSON pimage, then existing value
+    worker.pimage = profileImageUrl || req.body.pimage || worker.pimage;
     worker.jobname = req.body.jobname || worker.jobname;
     worker.education = req.body.education || worker.education;
     worker.about = req.body.about || worker.about;
@@ -350,6 +368,8 @@ const updateWorker = asyncHandler(async (req, res) => {
     }
 
     const updatedWorker = await worker.save();
+
+    console.log('UPDATED WORKER PIMAGE:', updatedWorker.pimage);
 
     res.json({
         _id: updatedWorker._id,

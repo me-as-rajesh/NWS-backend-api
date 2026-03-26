@@ -38,6 +38,12 @@ router
 	);
 
 // Public worker lookup by id (keep at the end)
-router.route('/:id').get(getWorkerById).put(updateWorker);
+router.route('/:id').get(getWorkerById).put(
+	upload.fields([
+		{ name: 'profileImage', maxCount: 1 },
+		{ name: 'pimage', maxCount: 1 },
+	]),
+	updateWorker
+);
 
 module.exports = router;
