@@ -161,15 +161,20 @@ const sendMessage = asyncHandler(async (req, res) => {
         return res.status(400).json({ message: 'Invalid request body: duplicate fields "chatId" and "chat". Use only "chatId".' });
     }
 
+    // `jobId` is not allowed in the sendMessage body — chat association is via `chatId` only
+    if ("jobId" in req.body) {
+        return res.status(400).json({ message: 'Invalid request body: "jobId" must not be included. Use only chatId to reference a chat.' });
+    }
+
     const allowed = ['content', 'chatId', 'senderId', 'senderName'];
     const extras = Object.keys(req.body).filter(k => !allowed.includes(k));
     if (extras.length > 0) {
         return res.status(400).json({ message: `Invalid request body: unexpected fields: ${extras.join(', ')}. Expected only: ${allowed.join(', ')}.` });
     }
 
-    if (!content || !chatId || !senderId) {
+    if (!content || !chatId || !senderId || !senderName) {
         console.log("Invalid data passed into request");
-        return res.sendStatus(400);
+        return res.status(400).json({ message: 'Missing required fields: content, chatId, senderId and senderName are required.' });
     }
 
     var newMessage = {
