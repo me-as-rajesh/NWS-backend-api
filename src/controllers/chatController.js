@@ -152,6 +152,21 @@ const sendMessage = asyncHandler(async (req, res) => {
     const senderId = getRequestUserId(req, { bodyKey: 'senderId', queryKey: 'senderId' });
     const senderName = req?.body?.senderName;
 
+    // Defensive validation: reject duplicate/incorrect field names and unexpected extras
+    if (("message" in req.body) && content) {
+        return res.status(400).json({ message: 'Invalid request body: duplicate fields "content" and "message". Use only "content".' });
+    }
+
+    if (("chat" in req.body) && chatId) {
+        return res.status(400).json({ message: 'Invalid request body: duplicate fields "chatId" and "chat". Use only "chatId".' });
+    }
+
+    const allowed = ['content', 'chatId', 'senderId', 'senderName'];
+    const extras = Object.keys(req.body).filter(k => !allowed.includes(k));
+    if (extras.length > 0) {
+        return res.status(400).json({ message: `Invalid request body: unexpected fields: ${extras.join(', ')}. Expected only: ${allowed.join(', ')}.` });
+    }
+
     if (!content || !chatId || !senderId) {
         console.log("Invalid data passed into request");
         return res.sendStatus(400);
