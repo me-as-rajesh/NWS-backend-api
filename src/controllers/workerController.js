@@ -3,6 +3,15 @@ const cloudinary = require('../config/cloudinary');
 const asyncHandler = require('express-async-handler');
 const jwt = require('jsonwebtoken');
 
+const parseCoordinate = (value) => {
+    if (value === undefined || value === null || value === '') {
+        return undefined;
+    }
+
+    const parsedValue = Number(value);
+    return Number.isFinite(parsedValue) ? parsedValue : undefined;
+};
+
 const getUploadedFile = (req) => {
     if (req.file) {
         return req.file;
@@ -57,6 +66,18 @@ const uploadWorkerImage = async (file, username) => {
     });
 
     return result.secure_url;
+};
+
+const assignWorkerCoordinates = (worker, latitudeValue, longitudeValue) => {
+    const nextLatitude = parseCoordinate(latitudeValue);
+    const nextLongitude = parseCoordinate(longitudeValue);
+
+    worker.latitude = latitudeValue !== undefined ? nextLatitude : worker.latitude;
+    worker.longitude = longitudeValue !== undefined ? nextLongitude : worker.longitude;
+
+    if (worker.latitude === undefined || worker.longitude === undefined) {
+        worker.location = undefined;
+    }
 };
 
 // @desc    Register a new worker
@@ -232,21 +253,11 @@ const updateWorkerProfile = asyncHandler(async (req, res) => {
         }
     }
 
-    let locationData = worker.location;
-    if (latitude && longitude) {
-        locationData = {
-            type: 'Point',
-            coordinates: [Number(longitude), Number(latitude)],
-        };
-    }
-
     worker.name = name || worker.name;
     worker.phoneNo = phoneNo || worker.phoneNo;
     worker.address = address || worker.address;
     worker.pimage = profileImageUrl;
-    worker.latitude = latitude !== undefined ? Number(latitude) : worker.latitude;
-    worker.longitude = longitude !== undefined ? Number(longitude) : worker.longitude;
-    worker.location = locationData;
+    assignWorkerCoordinates(worker, latitude, longitude);
     worker.jobname = jobname || worker.jobname;
     worker.education = education || worker.education;
     worker.about = about || worker.about;
@@ -351,21 +362,7 @@ const updateWorker = asyncHandler(async (req, res) => {
     worker.skills = req.body.skills ? (Array.isArray(req.body.skills) ? req.body.skills : typeof req.body.skills === 'string' ? req.body.skills.split(',').map((s) => s.trim()).filter(Boolean) : worker.skills) : worker.skills;
     worker.hourlyRate = req.body.hourlyRate !== undefined ? Number(req.body.hourlyRate) : worker.hourlyRate;
     worker.availability = req.body.availability !== undefined ? (req.body.availability === true || req.body.availability === 'true') : worker.availability;
-    worker.latitude = req.body.latitude !== undefined ? Number(req.body.latitude) : worker.latitude;
-    worker.longitude = req.body.longitude !== undefined ? Number(req.body.longitude) : worker.longitude;
-
-    // Build valid GeoJSON `location` only when both latitude and longitude are provided
-    if (req.body.latitude !== undefined && req.body.longitude !== undefined) {
-        worker.location = {
-            type: 'Point',
-            coordinates: [Number(req.body.longitude), Number(req.body.latitude)],
-        };
-    } else {
-        // sanitize malformed location objects (avoid { type: 'Point' } without coordinates)
-        if (worker.location && (!Array.isArray(worker.location.coordinates) || worker.location.coordinates.length !== 2)) {
-            worker.location = undefined;
-        }
-    }
+    assignWorkerCoordinates(worker, req.body.latitude, req.body.longitude);
 
     const updatedWorker = await worker.save();
 

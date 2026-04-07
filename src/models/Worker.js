@@ -1,6 +1,8 @@
 const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
 
+const isFiniteCoordinate = (value) => Number.isFinite(value);
+
 const workerSchema = new mongoose.Schema({
     // Authentication fields
     username: { type: String, required: true, unique: true },
@@ -19,7 +21,6 @@ const workerSchema = new mongoose.Schema({
         type: {
             type: String,
             enum: ['Point'],
-            default: 'Point'
         },
         coordinates: {
             type: [Number],
@@ -44,6 +45,34 @@ const workerSchema = new mongoose.Schema({
 }, { timestamps: true });
 
 workerSchema.index({ location: '2dsphere' });
+
+workerSchema.pre('validate', function(next) {
+    const hasLatitude = isFiniteCoordinate(this.latitude);
+    const hasLongitude = isFiniteCoordinate(this.longitude);
+
+    if (hasLatitude && hasLongitude) {
+        this.location = {
+            type: 'Point',
+            coordinates: [this.longitude, this.latitude],
+        };
+
+        return next();
+    }
+
+    const hasValidLocation = this.location
+        && this.location.type === 'Point'
+        && Array.isArray(this.location.coordinates)
+        && this.location.coordinates.length === 2
+        && this.location.coordinates.every((coordinate) => Number.isFinite(coordinate));
+
+    if (hasValidLocation) {
+        [this.longitude, this.latitude] = this.location.coordinates;
+        return next();
+    }
+
+    this.location = undefined;
+    next();
+});
 
 workerSchema.pre('save', async function(next) {
     if (!this.isModified('password')) {
